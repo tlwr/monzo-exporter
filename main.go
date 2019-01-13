@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/thejerf/suture"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -31,15 +32,18 @@ func main() {
 	}
 
 	monzoAccessTokensList := strings.Split(*monzoAccessTokens, ",")
+	duration := time.Duration(*metricsScrapeInterval) * time.Second
 
 	RegisterCustomMetrics()
 
-	go func() {
-		for true {
-			CollectAllMetrics(monzoAccessTokensList)
-			time.Sleep(time.Duration(*metricsScrapeInterval) * time.Second)
-		}
-	}()
+	supervisor := suture.NewSimple("MonzoCollector")
+	supervisor.Add(&MonzoCollector{
+		monzoAccessTokensList,
+		duration,
+		make(chan bool),
+	})
+	defer supervisor.Stop()
+	supervisor.ServeBackground()
 
 	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(":9036", nil)

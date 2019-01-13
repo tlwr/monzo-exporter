@@ -1,5 +1,35 @@
 package main
 
+import (
+	"log"
+	"time"
+)
+
+type MonzoCollector struct {
+	accessTokens []string
+	duration     time.Duration
+	stop         chan bool
+}
+
+func (m *MonzoCollector) Stop() {
+	log.Println("Stopping MonzoCollector")
+	m.stop <- true
+}
+
+func (m *MonzoCollector) Serve() {
+	log.Println("Starting MonzoCollector")
+	for {
+		select {
+		case <-m.stop:
+			m.stop <- true
+			return
+		default:
+			CollectAllMetrics(m.accessTokens)
+			time.Sleep(m.duration)
+		}
+	}
+}
+
 func CollectAllMetrics(accessTokens []string) {
 	for _, token := range accessTokens {
 
