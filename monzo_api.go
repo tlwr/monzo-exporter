@@ -2,39 +2,38 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
+
+	"github.com/h2non/gentleman"
 )
 
 const (
 	MONZO_API_ENDPOINT = "https://api.monzo.com"
 )
 
+func MonzoClient(accessToken string) *gentleman.Request {
+	client := gentleman.New()
+	client.URL("https://api.monzo.com")
+	request := client.Request()
+	request.SetHeader("Authorization", "Bearer "+accessToken)
+	return request
+}
+
 func GetUserIdentity(accessToken string) (MonzoCallerIdentity, error) {
 	var callerID MonzoCallerIdentity
 
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", MONZO_API_ENDPOINT+"/ping/whoami", nil)
+	req := MonzoClient(accessToken)
+	req.Path("/ping/whoami")
+	log.Print("Requesting: /ping/whoami")
+	resp, err := req.Send()
 
 	if err != nil {
+		log.Printf("Encountered error: /ping/whoami => %s", err)
 		return callerID, err
 	}
+	log.Print("Finished: /ping/whoami")
 
-	req.Header.Add("Authorization", "Bearer "+accessToken)
-	log.Print("Requesting: Monzo ping/whoami")
-	resp, err := client.Do(req)
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		log.Printf("Encountered error: Monzo /ping/whoami => %s", err)
-		return callerID, err
-	}
-
-	err = json.Unmarshal(body, &callerID)
+	err = json.Unmarshal(resp.Bytes(), &callerID)
 	if err != nil {
 		return callerID, err
 	}
@@ -45,31 +44,20 @@ func GetUserIdentity(accessToken string) (MonzoCallerIdentity, error) {
 func ListAccounts(accessToken string) ([]MonzoAccount, error) {
 	var accounts []MonzoAccount
 
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", MONZO_API_ENDPOINT+"/accounts", nil)
+	req := MonzoClient(accessToken)
+	req.Path("/accounts")
+	log.Print("Requesting: /accounts")
+	resp, err := req.Send()
 
 	if err != nil {
+		log.Printf("Encountered error: /accounts => %s", err)
 		return accounts, err
 	}
-
-	log.Print("Requesting: Monzo /accounts")
-	req.Header.Add("Authorization", "Bearer "+accessToken)
-	resp, err := client.Do(req)
-
-	if err != nil {
-		log.Printf("Encountered error: Monzo /accounts request => %s", err)
-		return accounts, err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return accounts, err
-	}
+	log.Printf("Finished: /accounts")
 
 	var accountsResp MonzoAPIListAccountsResponse
 
-	err = json.Unmarshal(body, &accountsResp)
+	err = json.Unmarshal(resp.Bytes(), &accountsResp)
 	if err != nil {
 		return accounts, err
 	}
@@ -81,32 +69,20 @@ func ListAccounts(accessToken string) ([]MonzoAccount, error) {
 func ListPots(accessToken string) ([]MonzoPot, error) {
 	var pots []MonzoPot
 
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", MONZO_API_ENDPOINT+"/pots", nil)
+	req := MonzoClient(accessToken)
+	req.Path("/pots")
+	log.Print("Requesting: /pots")
+	resp, err := req.Send()
 
 	if err != nil {
+		log.Printf("Encountered error: /pots => %s", err)
 		return pots, err
 	}
-
-	log.Print("Requesting: Monzo /pots")
-	req.Header.Add("Authorization", "Bearer "+accessToken)
-	resp, err := client.Do(req)
-
-	if err != nil {
-		log.Printf("Encountered error: Monzo /pots request => %s", err)
-		return pots, err
-	}
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return pots, err
-	}
+	log.Print("Finished: /pots")
 
 	var potsResp MonzoAPIListPotsResponse
 
-	err = json.Unmarshal(body, &potsResp)
+	err = json.Unmarshal(resp.Bytes(), &potsResp)
 	if err != nil {
 		return pots, err
 	}
@@ -118,32 +94,19 @@ func ListPots(accessToken string) ([]MonzoPot, error) {
 func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, error) {
 	var balance MonzoBalance
 
-	url := fmt.Sprintf("%s/balance?account_id=%s", MONZO_API_ENDPOINT, accountID)
-
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-
-	if err != nil {
-		return balance, err
-	}
-
-	log.Printf("Requesting: Monzo /balance/account_id=%s", accountID)
-	req.Header.Add("Authorization", "Bearer "+accessToken)
-	resp, err := client.Do(req)
+	req := MonzoClient(accessToken)
+	req.Path("/balance")
+	req.AddQuery("account_id", string(accountID))
+	log.Printf("Requesting: /balance?account_id=%s", accountID)
+	resp, err := req.Send()
 
 	if err != nil {
-		log.Printf("Encountered error: Monzo /pots request => %s", err)
+		log.Printf("Encountered error: /pots => %s", err)
 		return balance, err
 	}
+	log.Printf("Finished: /balance?account_id=%s", accountID)
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return balance, err
-	}
-
-	err = json.Unmarshal(body, &balance)
+	err = json.Unmarshal(resp.Bytes(), &balance)
 	if err != nil {
 		return balance, err
 	}
