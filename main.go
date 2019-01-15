@@ -27,7 +27,7 @@ func main() {
 	kingpin.Parse()
 
 	if *monzoAccessTokens == "" {
-		fmt.Println("-monzo-access-tokens is required")
+		fmt.Println("--monzo-access-tokens is required")
 		os.Exit(1)
 	}
 
