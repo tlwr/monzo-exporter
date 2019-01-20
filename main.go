@@ -26,19 +26,24 @@ var (
 func main() {
 	kingpin.Parse()
 
+	var getMonzoAccessTokens func() ([]string, error)
+
 	if *monzoAccessTokens == "" {
 		fmt.Println("--monzo-access-tokens is required")
 		os.Exit(1)
 	}
 
-	monzoAccessTokensList := strings.Split(*monzoAccessTokens, ",")
+	getMonzoAccessTokens = func() ([]string, error) {
+		return strings.Split(*monzoAccessTokens, ","), nil
+	}
+
 	duration := time.Duration(*metricsScrapeInterval) * time.Second
 
 	RegisterCustomMetrics()
 
 	supervisor := suture.NewSimple("MonzoCollector")
 	supervisor.Add(&MonzoCollector{
-		monzoAccessTokensList,
+		getMonzoAccessTokens,
 		duration,
 		make(chan bool),
 	})

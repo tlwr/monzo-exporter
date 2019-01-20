@@ -6,9 +6,9 @@ import (
 )
 
 type MonzoCollector struct {
-	accessTokens []string
-	duration     time.Duration
-	stop         chan bool
+	accessTokenGetter func() ([]string, error)
+	duration          time.Duration
+	stop              chan bool
 }
 
 func (m *MonzoCollector) Stop() {
@@ -24,13 +24,22 @@ func (m *MonzoCollector) Serve() {
 			m.stop <- true
 			return
 		default:
-			CollectAllMetrics(m.accessTokens)
+			CollectAllMetrics(m.accessTokenGetter)
 			time.Sleep(m.duration)
 		}
 	}
 }
 
-func CollectAllMetrics(accessTokens []string) {
+func CollectAllMetrics(
+	accessTokensGetter func() ([]string, error),
+) {
+
+	accessTokens, err := accessTokensGetter()
+
+	if err != nil {
+		panic(err)
+	}
+
 	for _, token := range accessTokens {
 
 		identity, err := GetUserIdentity(token)
