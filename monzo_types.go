@@ -1,15 +1,18 @@
 package main
 
 import (
+	"sync"
 	"time"
 )
 
+type MonzoAccessToken string
 type MonzoAccountID string
 type MonzoCategory string
 type MonzoClientID string
 type MonzoCurrency string
 type MonzoMerchantID string
 type MonzoPotID string
+type MonzoRefreshToken string
 type MonzoTransactionID string
 type MonzoUserID string
 
@@ -50,4 +53,28 @@ type MonzoCallerIdentity struct {
 	Authenticated bool          `json:"authenticated"`
 	ClientID      MonzoClientID `json:"client_id"`
 	UserID        MonzoUserID   `json:"user_id"`
+}
+
+type MonzoAuthResponse struct {
+	AccessToken   MonzoAccessToken  `json:"access_token"`
+	RefreshToken  MonzoRefreshToken `json:"refresh_token"`
+	ExpirySeconds int64             `json:"expires_in"`
+}
+
+type MonzoAccessAndRefreshTokens struct {
+	AccessToken  MonzoAccessToken
+	RefreshToken MonzoRefreshToken
+}
+
+type ConcurrentMonzoTokensBox struct {
+	Lock   sync.Mutex
+	Tokens []MonzoAccessAndRefreshTokens
+}
+
+type MonzoOAuthClient struct {
+	MonzoOAuthClientID     string
+	MonzoOAuthClientSecret string
+	ExternalURL            string
+
+	TokensBox ConcurrentMonzoTokensBox
 }
