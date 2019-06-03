@@ -113,3 +113,33 @@ func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, err
 
 	return balance, nil
 }
+
+func RefreshToken(clientId string, clientSecret string, accessToken string, refreshToken string) (MonzoAccessAndRefreshTokens, error) {
+	var returnTokens MonzoAccessAndRefreshTokens
+
+	req := MonzoClient(accessToken)
+	req.Path("/oauth2/token?grant_type=refresh_token")
+	req.AddQuery("grant_type", "refresh_token")
+	req.AddQuery("client_id", clientId)
+	req.AddQuery("client_secret", clientSecret)
+	log.Printf("Requesting: /oauth2/token")
+	resp, err := req.Send()
+
+	if err != nil {
+		log.Printf("Encountered error: /oauth2/token?grant_type=refresh_token => %s", err)
+		return returnTokens, err
+	}
+
+	var authResponse MonzoAuthResponse
+	err = json.Unmarshal(resp.Bytes(), &authResponse)
+
+	if err != nil {
+		log.Printf("Encountered error unmarshalling refresh token response => %s", err)
+		return returnTokens, err
+	}
+
+	returnTokens.AccessToken = authResponse.AccessToken
+	returnTokens.RefreshToken = authResponse.RefreshToken
+
+	return returnTokens, nil
+}

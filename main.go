@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -15,10 +16,11 @@ import (
 var (
 	version = "0.0.1"
 
-	monzoOAuthClientID     = kingpin.Flag("monzo-oauth-client-id", "Monzo OAuth client id").Default("").OverrideDefaultFromEnvar("MONZO_OAUTH_CLIENT_ID").String()
-	monzoOAuthClientSecret = kingpin.Flag("monzo-oauth-client-secret", "Monzo OAuth client secret").Default("").OverrideDefaultFromEnvar("MONZO_OAUTH_CLIENT_SECRET").String()
-	monzoOAuthPort         = kingpin.Flag("monzo-oauth-port", "The port to bind to for serving OAuth").Default("8080").OverrideDefaultFromEnvar("MONZO_OAUTH_PORT").Int()
-	monzoOAuthExternalURL  = kingpin.Flag("monzo-oauth-external-url", "The URL on which the exporter will be reachable").Default("").OverrideDefaultFromEnvar("MONZO_OAUTH_EXTERNAL_URL").String()
+	monzoOAuthClientID        = kingpin.Flag("monzo-oauth-client-id", "Monzo OAuth client id").Default("").OverrideDefaultFromEnvar("MONZO_OAUTH_CLIENT_ID").String()
+	monzoOAuthClientSecret    = kingpin.Flag("monzo-oauth-client-secret", "Monzo OAuth client secret").Default("").OverrideDefaultFromEnvar("MONZO_OAUTH_CLIENT_SECRET").String()
+	monzoOAuthPort            = kingpin.Flag("monzo-oauth-port", "The port to bind to for serving OAuth").Default("8080").OverrideDefaultFromEnvar("MONZO_OAUTH_PORT").Int()
+	monzoOAuthExternalURL     = kingpin.Flag("monzo-oauth-external-url", "The URL on which the exporter will be reachable").Default("").OverrideDefaultFromEnvar("MONZO_OAUTH_EXTERNAL_URL").String()
+	monzoOAuthRefreshInterval = kingpin.Flag("monzo-oauth-refresh-interval", "Time in seconds between OAuth token refreshes").Default("10").OverrideDefaultFromEnvar("MONZO_OAUTH_REFRESH_INTERVAL").Int64()
 
 	monzoAccessTokens = kingpin.Flag("monzo-access-tokens", "Monzo access tokens comma separated").Default("").OverrideDefaultFromEnvar("MONZO_ACCESS_TOKENS").String()
 
@@ -30,6 +32,7 @@ func main() {
 	kingpin.Parse()
 
 	var getMonzoAccessTokens func() ([]string, error)
+	var monzoOAuthClient MonzoOAuthClient
 
 	if *monzoAccessTokens != "" {
 		getMonzoAccessTokens = func() ([]string, error) {
@@ -37,11 +40,11 @@ func main() {
 		}
 	} else if *monzoOAuthClientID != "" && *monzoOAuthClientSecret != "" && *monzoOAuthExternalURL != "" {
 
-		getMonzoAccessTokens = (&MonzoOAuthClient{
-			MonzoOAuthClientID:     *monzoOAuthClientID,
-			MonzoOAuthClientSecret: *monzoOAuthClientSecret,
-			ExternalURL:            *monzoOAuthExternalURL,
-		}).listen(*monzoOAuthPort)
+		monzoOAuthClient.MonzoOAuthClientID = *monzoOAuthClientID
+		monzoOAuthClient.MonzoOAuthClientSecret = *monzoOAuthClientSecret
+		monzoOAuthClient.ExternalURL = *monzoOAuthExternalURL
+
+		getMonzoAccessTokens = monzoOAuthClient.listen(*monzoOAuthPort)
 	} else {
 		fmt.Println("One of the following options is required:")
 		fmt.Println("  - ONLY   --monzo-access-tokens")
@@ -49,18 +52,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	duration := time.Duration(*metricsScrapeInterval) * time.Second
-
 	RegisterCustomMetrics()
 
 	supervisor := suture.NewSimple("MonzoCollector")
 	supervisor.Add(&MonzoCollector{
 		getMonzoAccessTokens,
-		duration,
+		time.Duration(*metricsScrapeInterval) * time.Second,
 		make(chan bool),
 	})
 	defer supervisor.Stop()
 	supervisor.ServeBackground()
+
+	tickerOAuthInterval := time.NewTicker(
+		time.Duration(*monzoOAuthRefreshInterval) * time.Second,
+	)
+
+	if *monzoAccessTokens == "" {
+		go func() {
+			for _ = range tickerOAuthInterval.C {
+				log.Println("Refreshing OAuth tokens")
+			}
+		}()
+	} else {
+		log.Println("Skipping starting OAuth token refresher")
+	}
 
 	http.ListenAndServe(fmt.Sprintf(":%d", *metricsPort), promhttp.Handler())
 }

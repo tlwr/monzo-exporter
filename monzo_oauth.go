@@ -177,15 +177,16 @@ func (m *MonzoOAuthClient) GetAccessTokens() ([]string, error) {
 
 	log.Println("Locking TokensBox")
 	m.TokensBox.Lock.Lock()
+	defer func() {
+		log.Println("Unlocking TokensBox")
+		m.TokensBox.Lock.Unlock()
+	}()
 
 	log.Printf("There are %d tokens in the box\n", len(m.TokensBox.Tokens))
 
 	for _, accessAndRefreshToken := range m.TokensBox.Tokens {
 		tokens = append(tokens, string(accessAndRefreshToken.AccessToken))
 	}
-
-	log.Println("Unlocking TokensBox")
-	m.TokensBox.Lock.Unlock()
 
 	log.Println("Finished getting access tokens")
 	return tokens, nil
@@ -206,4 +207,41 @@ func (m *MonzoOAuthClient) listen(port int) func() ([]string, error) {
 
 	go server.ListenAndServe()
 	return m.GetAccessTokens
+}
+
+func (m *MonzoOAuthClient) RefreshTokens() error {
+	log.Println("Locking TokensBox")
+	m.TokensBox.Lock.Lock()
+
+	tokens := m.TokensBox.Tokens
+
+	defer func() {
+		log.Println("Unlocking TokensBox")
+		m.TokensBox.Lock.Unlock()
+	}()
+
+	if len(tokens) == 0 {
+		log.Println("No tokens to refresh. Done")
+		return nil
+	}
+
+	headToken := m.TokensBox.Tokens[0]
+	tailTokens := m.TokensBox.Tokens[1:]
+
+	doWeNeedToRefresh := true // FIXME
+	if doWeNeedToRefresh {
+		refreshedToken, err := RefreshToken(
+			m.MonzoOAuthClientID, m.MonzoOAuthClientSecret,
+			string(headToken.AccessToken), string(headToken.RefreshToken),
+		)
+
+		if err != nil {
+			panic(err)
+		}
+
+		headToken = refreshedToken
+	}
+
+	m.TokensBox.Tokens = append(tailTokens, headToken)
+	return nil
 }
