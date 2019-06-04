@@ -200,12 +200,10 @@ func (m *MonzoOAuthClient) GetAccessTokens() ([]string, error) {
 }
 
 func (m *MonzoOAuthClient) listen(port int) func() ([]string, error) {
-	tokensBox := ConcurrentMonzoTokensBox{
+	m.TokensBox = ConcurrentMonzoTokensBox{
 		Lock:   sync.Mutex{},
 		Tokens: make([]MonzoAccessAndRefreshTokens, 0),
 	}
-
-	m.TokensBox = tokensBox
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
