@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -35,6 +37,14 @@ var (
 			Help: "Shows the individual pot balance",
 		},
 		[]string{"user_id", "pot_id", "pot_name"},
+	)
+
+	accessTokenExpiryMetric = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "monzo_access_token_expiry",
+			Help: "Shows the unix timestamp expiry for the access token",
+		},
+		[]string{"user_id"},
 	)
 )
 
@@ -97,4 +107,15 @@ func SetPotBalance(
 			"pot_name": potName,
 		},
 	).Set(float64(balance))
+}
+
+func SetAccessTokenExpiry(
+	userID MonzoUserID,
+	expiryTime time.Time,
+) {
+	accessTokenExpiryMetric.With(
+		prometheus.Labels{
+			"user_id": string(userID),
+		},
+	).Set(float64(expiryTime.Unix()))
 }

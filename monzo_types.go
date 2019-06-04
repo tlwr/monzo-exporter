@@ -58,12 +58,15 @@ type MonzoCallerIdentity struct {
 type MonzoAuthResponse struct {
 	AccessToken   MonzoAccessToken  `json:"access_token"`
 	RefreshToken  MonzoRefreshToken `json:"refresh_token"`
+	UserID        MonzoUserID       `json:"user_id"`
 	ExpirySeconds int64             `json:"expires_in"`
 }
 
 type MonzoAccessAndRefreshTokens struct {
 	AccessToken  MonzoAccessToken
 	RefreshToken MonzoRefreshToken
+	UserID       MonzoUserID
+	ExpiryTime   time.Time
 }
 
 type ConcurrentMonzoTokensBox struct {

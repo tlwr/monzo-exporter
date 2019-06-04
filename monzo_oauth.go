@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/h2non/gentleman"
 	"github.com/h2non/gentleman/plugins/multipart"
@@ -127,6 +128,10 @@ func (m *MonzoOAuthClient) handleJourneyCallback(w http.ResponseWriter, r *http.
 		return
 	}
 
+	expiryTime := time.Now().Add(
+		time.Duration(authResponse.ExpirySeconds-300) * time.Second,
+	)
+
 	log.Println("Locking TokensBox")
 	m.TokensBox.Lock.Lock()
 
@@ -135,6 +140,8 @@ func (m *MonzoOAuthClient) handleJourneyCallback(w http.ResponseWriter, r *http.
 		MonzoAccessAndRefreshTokens{
 			AccessToken:  authResponse.AccessToken,
 			RefreshToken: authResponse.RefreshToken,
+			UserID:       authResponse.UserID,
+			ExpiryTime:   expiryTime,
 		},
 	)
 	log.Println("Appended to TokensBox")
@@ -230,16 +237,24 @@ func (m *MonzoOAuthClient) RefreshTokens() error {
 
 	doWeNeedToRefresh := true // FIXME
 	if doWeNeedToRefresh {
+		log.Printf("Refreshing token for user %s", headToken.UserID)
+
 		refreshedToken, err := RefreshToken(
 			m.MonzoOAuthClientID, m.MonzoOAuthClientSecret,
 			string(headToken.AccessToken), string(headToken.RefreshToken),
 		)
 
 		if err != nil {
-			panic(err)
+			return fmt.Errorf(
+				"Encountered error refreshing token for user %s => %s",
+				headToken.UserID, err,
+			)
 		}
 
 		headToken = refreshedToken
+		log.Printf("Refreshed token for user %s", headToken.UserID)
+
+		SetAccessTokenExpiry(headToken.UserID, headToken.ExpiryTime)
 	}
 
 	m.TokensBox.Tokens = append(tailTokens, headToken)

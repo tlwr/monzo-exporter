@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/h2non/gentleman"
 )
@@ -138,8 +139,14 @@ func RefreshToken(clientId string, clientSecret string, accessToken string, refr
 		return returnTokens, err
 	}
 
-	returnTokens.AccessToken = authResponse.AccessToken
-	returnTokens.RefreshToken = authResponse.RefreshToken
+	expiryTime := time.Now().Add(
+		time.Duration(authResponse.ExpirySeconds-300) * time.Second,
+	)
 
-	return returnTokens, nil
+	return MonzoAccessAndRefreshTokens{
+		AccessToken:  authResponse.AccessToken,
+		RefreshToken: authResponse.RefreshToken,
+		UserID:       authResponse.UserID,
+		ExpiryTime:   expiryTime,
+	}, nil
 }
