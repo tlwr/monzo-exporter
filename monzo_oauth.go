@@ -216,7 +216,7 @@ func (m *MonzoOAuthClient) listen(port int) func() ([]string, error) {
 	return m.GetAccessTokens
 }
 
-func (m *MonzoOAuthClient) RefreshTokens() error {
+func (m *MonzoOAuthClient) RefreshAToken() error {
 	log.Println("Locking TokensBox")
 	m.TokensBox.Lock.Lock()
 

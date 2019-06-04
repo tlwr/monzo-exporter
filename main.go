@@ -71,6 +71,10 @@ func main() {
 		go func() {
 			for _ = range tickerOAuthInterval.C {
 				log.Println("Refreshing OAuth tokens")
+				err := monzoOAuthClient.RefreshAToken()
+				if err != nil {
+					log.Printf("Encountered error refreshing tokens")
+				}
 			}
 		}()
 	} else {
