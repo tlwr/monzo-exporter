@@ -183,28 +183,41 @@ func (m *MonzoOAuthClient) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("ServeHTTP: Served 404 for %s\n", path)
 }
 
-func (m *MonzoOAuthClient) GetAccessTokens() ([]string, error) {
-	log.Println("GetAccessTokens: Getting access tokens")
-	tokens := make([]string, 0)
+func (m *MonzoOAuthClient) UsingAccessTokens(fun func([]string) error) error {
+	accessTokens := make([]string, 0)
 
-	log.Println("GetAccessTokens: Locking TokensBox")
+	log.Println("UsingAccessTokens: Locking TokensBox")
 	m.TokensBox.Lock.Lock()
+	log.Println("UsingAccessTokens: Locked TokensBox")
+
 	defer func() {
-		log.Println("GetAccessTokens: Unlocking TokensBox")
+		log.Println("UsingAccessTokens: Unlocking TokensBox")
 		m.TokensBox.Lock.Unlock()
 	}()
 
-	log.Printf("GetAccessTokens: There are %d tokens in the box\n", len(m.TokensBox.Tokens))
-
-	for _, accessAndRefreshToken := range m.TokensBox.Tokens {
-		tokens = append(tokens, string(accessAndRefreshToken.AccessToken))
+	for _, accessAndRefreshTokens := range m.TokensBox.Tokens {
+		accessTokens = append(
+			accessTokens, string(accessAndRefreshTokens.AccessToken),
+		)
 	}
 
-	log.Println("GetAccessTokens: Finished getting access tokens")
-	return tokens, nil
+	log.Println(
+		"UsingAccessTokens: Calling func with %d access tokens",
+		len(accessTokens),
+	)
+	err := fun(accessTokens)
+	log.Println("UsingAccessTokens: Finished call to func")
+
+	if err != nil {
+		log.Printf("UsingAccessTokens: Encountered err calling func => %s", err)
+		return err
+	}
+
+	log.Println("UsingAccessTokens: Done")
+	return nil
 }
 
-func (m *MonzoOAuthClient) listen(port int) func() ([]string, error) {
+func (m *MonzoOAuthClient) Start(port int) func(func([]string) error) error {
 	m.TokensBox = ConcurrentMonzoTokensBox{
 		Lock:   sync.Mutex{},
 		Tokens: make([]MonzoAccessAndRefreshTokens, 0),
@@ -216,7 +229,7 @@ func (m *MonzoOAuthClient) listen(port int) func() ([]string, error) {
 	}
 
 	go server.ListenAndServe()
-	return m.GetAccessTokens
+	return m.UsingAccessTokens
 }
 
 func (m *MonzoOAuthClient) RefreshAToken() error {

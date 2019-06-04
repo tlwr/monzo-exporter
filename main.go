@@ -31,12 +31,23 @@ var (
 func main() {
 	kingpin.Parse()
 
-	var getMonzoAccessTokens func() ([]string, error)
+	var usingMonzoAccessTokens func(func([]string) error) error
 	var monzoOAuthClient MonzoOAuthClient
 
 	if *monzoAccessTokens != "" {
-		getMonzoAccessTokens = func() ([]string, error) {
-			return strings.Split(*monzoAccessTokens, ","), nil
+		usingMonzoAccessTokens = func(fun func([]string) error) error {
+			log.Printf(
+				"Anon UsingArgAccessTokens: Calling func with %d access tokens",
+				len(*monzoAccessTokens),
+			)
+			err := fun(strings.Split(*monzoAccessTokens, ","))
+			if err != nil {
+				log.Printf(
+					"Anon UsingArgAccessTokens: Err using access tokens => %s", err,
+				)
+				return err
+			}
+			return nil
 		}
 	} else if *monzoOAuthClientID != "" && *monzoOAuthClientSecret != "" && *monzoOAuthExternalURL != "" {
 
@@ -44,7 +55,7 @@ func main() {
 		monzoOAuthClient.MonzoOAuthClientSecret = *monzoOAuthClientSecret
 		monzoOAuthClient.ExternalURL = *monzoOAuthExternalURL
 
-		getMonzoAccessTokens = monzoOAuthClient.listen(*monzoOAuthPort)
+		usingMonzoAccessTokens = monzoOAuthClient.Start(*monzoOAuthPort)
 	} else {
 		fmt.Println("One of the following options is required:")
 		fmt.Println("  - ONLY   --monzo-access-tokens")
@@ -56,7 +67,7 @@ func main() {
 
 	supervisor := suture.NewSimple("MonzoCollector")
 	supervisor.Add(&MonzoCollector{
-		getMonzoAccessTokens,
+		usingMonzoAccessTokens,
 		time.Duration(*metricsScrapeInterval) * time.Second,
 		make(chan bool),
 	})
