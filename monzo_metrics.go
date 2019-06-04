@@ -53,6 +53,7 @@ func RegisterCustomMetrics() {
 	prometheus.MustRegister(totalBalanceMetric)
 	prometheus.MustRegister(spendTodayMetric)
 	prometheus.MustRegister(potBalanceMetric)
+	prometheus.MustRegister(accessTokenExpiryMetric)
 }
 
 func SetCurrentBalance(
