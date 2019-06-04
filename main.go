@@ -74,13 +74,21 @@ func main() {
 	defer supervisor.Stop()
 	supervisor.ServeBackground()
 
-	tickerOAuthInterval := time.NewTicker(
-		time.Duration(*monzoOAuthRefreshInterval) * time.Second,
-	)
+	if *monzoAccessTokens != "" {
+		log.Println(
+			"main: Skipping starting OAuth token refresher because Access Tokens",
+		)
+	} else if *monzoOAuthRefreshInterval == 0 {
+		log.Println(
+			"main: Skipping starting OAuth token refresher because interval is 0",
+		)
+	} else {
+		tickerOAuthInterval := time.NewTicker(
+			time.Duration(*monzoOAuthRefreshInterval) * time.Second,
+		)
 
-	if *monzoAccessTokens == "" {
 		go func() {
-			for _ = range tickerOAuthInterval.C {
+			for range tickerOAuthInterval.C {
 				log.Println("main: Refreshing OAuth tokens")
 				err := monzoOAuthClient.RefreshAToken()
 				if err != nil {
@@ -89,8 +97,6 @@ func main() {
 				log.Println("main: Refreshed OAuth tokens")
 			}
 		}()
-	} else {
-		log.Println("main: Skipping starting OAuth token refresher")
 	}
 
 	log.Printf("main: Serving prometheus on :%d", *metricsPort)
