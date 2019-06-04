@@ -165,7 +165,7 @@ func RefreshToken(clientId string, clientSecret string, accessToken string, refr
 	)
 
 	log.Printf(
-		"RefreshTokeN: Refreshed access token for %s", authResponse.UserID,
+		"RefreshToken: Refreshed access token for %s", authResponse.UserID,
 	)
 	return MonzoAccessAndRefreshTokens{
 		AccessToken:  authResponse.AccessToken,
