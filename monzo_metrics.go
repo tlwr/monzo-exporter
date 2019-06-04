@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -70,6 +71,11 @@ func SetCurrentBalance(
 	accountID MonzoAccountID,
 	balance int64,
 ) {
+	log.Printf(
+		"Setting monzo_current_balance for user %s for account %s to %d",
+		userID, accountID, balance,
+	)
+
 	currentBalanceMetric.With(
 		prometheus.Labels{
 			"user_id":    string(userID),
@@ -83,6 +89,11 @@ func SetTotalBalance(
 	accountID MonzoAccountID,
 	balance int64,
 ) {
+	log.Printf(
+		"Setting monzo_total_balance for user %s for account %s to %d",
+		userID, accountID, balance,
+	)
+
 	totalBalanceMetric.With(
 		prometheus.Labels{
 			"user_id":    string(userID),
@@ -96,6 +107,11 @@ func SetSpendToday(
 	accountID MonzoAccountID,
 	spend int64,
 ) {
+	log.Printf(
+		"Setting monzo_spend_today for user %s for account %s to %d",
+		userID, accountID, spend,
+	)
+
 	spendTodayMetric.With(
 		prometheus.Labels{
 			"user_id":    string(userID),
@@ -110,6 +126,11 @@ func SetPotBalance(
 	potName string,
 	balance int64,
 ) {
+	log.Printf(
+		"Setting monzo_pot_balance for user %s for pot %s to %d",
+		userID, potID, balance,
+	)
+
 	potBalanceMetric.With(
 		prometheus.Labels{
 			"user_id":  string(userID),
@@ -120,17 +141,29 @@ func SetPotBalance(
 }
 
 func SetUserLatestCollect(userID MonzoUserID) {
+	timestamp := time.Now().Unix()
+
+	log.Printf(
+		"Setting monzo_user_latest_collect for user %s to %d",
+		userID, timestamp,
+	)
+
 	userLatestCollectMetric.With(
 		prometheus.Labels{
 			"user_id": string(userID),
 		},
-	).Set(float64(time.Now().Unix()))
+	).Set(float64(timestamp))
 }
 
 func SetAccessTokenExpiry(
 	userID MonzoUserID,
 	expiryTime time.Time,
 ) {
+	log.Printf(
+		"Setting monzo_access_token_expiry for user %s to %d",
+		userID, expiryTime.Unix(),
+	)
+
 	accessTokenExpiryMetric.With(
 		prometheus.Labels{
 			"user_id": string(userID),
