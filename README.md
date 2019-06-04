@@ -6,7 +6,7 @@ Very alpha
 
 - [x] Export metrics from Monzo
 - [x] OAuth token capture
-- [ ] OAuth token refresh
+- [x] OAuth token refresh
 - [ ] OAuth token persistent storage
 
 ## Instructions
