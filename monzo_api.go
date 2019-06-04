@@ -25,17 +25,18 @@ func GetUserIdentity(accessToken string) (MonzoCallerIdentity, error) {
 
 	req := MonzoClient(accessToken)
 	req.Path("/ping/whoami")
-	log.Print("Requesting: /ping/whoami")
+	log.Print("GetUserIdentity: Requesting: /ping/whoami")
 	resp, err := req.Send()
 
 	if err != nil {
-		log.Printf("Encountered error: /ping/whoami => %s", err)
+		log.Printf("GetUserIdentity: Encountered error: /ping/whoami => %s", err)
 		return callerID, err
 	}
-	log.Print("Finished: /ping/whoami")
+	log.Println("GetUserIdentity: Finished: /ping/whoami")
 
 	err = json.Unmarshal(resp.Bytes(), &callerID)
 	if err != nil {
+		log.Printf("GetUserIdentity: Encountered error unmarshalling => %s", err)
 		return callerID, err
 	}
 
@@ -47,23 +48,25 @@ func ListAccounts(accessToken string) ([]MonzoAccount, error) {
 
 	req := MonzoClient(accessToken)
 	req.Path("/accounts")
-	log.Print("Requesting: /accounts")
+	log.Print("ListAccounts: Requesting: /accounts")
 	resp, err := req.Send()
 
 	if err != nil {
-		log.Printf("Encountered error: /accounts => %s", err)
+		log.Printf("ListAccounts: Encountered error: /accounts => %s", err)
 		return accounts, err
 	}
-	log.Printf("Finished: /accounts")
+	log.Printf("ListAccounts: Finished: /accounts")
 
 	var accountsResp MonzoAPIListAccountsResponse
 
 	err = json.Unmarshal(resp.Bytes(), &accountsResp)
 	if err != nil {
+		log.Printf("ListAccounts: Encountered error unmarshalling => %s", err)
 		return accounts, err
 	}
 
 	accounts = accountsResp.Accounts
+	log.Printf("ListAccounts: Done")
 	return accounts, nil
 }
 
@@ -72,14 +75,14 @@ func ListPots(accessToken string) ([]MonzoPot, error) {
 
 	req := MonzoClient(accessToken)
 	req.Path("/pots")
-	log.Print("Requesting: /pots")
+	log.Print("ListPots: Requesting: /pots")
 	resp, err := req.Send()
 
 	if err != nil {
-		log.Printf("Encountered error: /pots => %s", err)
+		log.Printf("ListPots: Encountered error: /pots => %s", err)
 		return pots, err
 	}
-	log.Print("Finished: /pots")
+	log.Print("ListPots Finished: /pots")
 
 	var potsResp MonzoAPIListPotsResponse
 
@@ -98,14 +101,14 @@ func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, err
 	req := MonzoClient(accessToken)
 	req.Path("/balance")
 	req.AddQuery("account_id", string(accountID))
-	log.Printf("Requesting: /balance?account_id=%s", accountID)
+	log.Printf("GetBalance: Requesting: /balance?account_id=%s", accountID)
 	resp, err := req.Send()
 
 	if err != nil {
-		log.Printf("Encountered error: /pots => %s", err)
+		log.Printf("GetBalance: Encountered error: /pots => %s", err)
 		return balance, err
 	}
-	log.Printf("Finished: /balance?account_id=%s", accountID)
+	log.Printf("GetBalance: Finished: /balance?account_id=%s", accountID)
 
 	err = json.Unmarshal(resp.Bytes(), &balance)
 	if err != nil {
@@ -123,11 +126,14 @@ func RefreshToken(clientId string, clientSecret string, accessToken string, refr
 	req.AddQuery("grant_type", "refresh_token")
 	req.AddQuery("client_id", clientId)
 	req.AddQuery("client_secret", clientSecret)
-	log.Printf("Requesting: /oauth2/token")
+	log.Printf("RefreshToken: Requesting: /oauth2/token")
 	resp, err := req.Send()
 
 	if err != nil {
-		log.Printf("Encountered error: /oauth2/token?grant_type=refresh_token => %s", err)
+		log.Printf(
+			"RefreshToken: Encountered error: /oauth2/token?grant_type=refresh_token => %s",
+			err,
+		)
 		return returnTokens, err
 	}
 
@@ -135,7 +141,10 @@ func RefreshToken(clientId string, clientSecret string, accessToken string, refr
 	err = json.Unmarshal(resp.Bytes(), &authResponse)
 
 	if err != nil {
-		log.Printf("Encountered error unmarshalling refresh token response => %s", err)
+		log.Printf(
+			"RefreshToken: Encountered error unmarshalling refresh token response => %s",
+			err,
+		)
 		return returnTokens, err
 	}
 
@@ -143,6 +152,9 @@ func RefreshToken(clientId string, clientSecret string, accessToken string, refr
 		time.Duration(authResponse.ExpirySeconds-300) * time.Second,
 	)
 
+	log.Printf(
+		"RefreshTokeN: Refreshed access token for %s", authResponse.UserID,
+	)
 	return MonzoAccessAndRefreshTokens{
 		AccessToken:  authResponse.AccessToken,
 		RefreshToken: authResponse.RefreshToken,

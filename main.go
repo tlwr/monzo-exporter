@@ -70,16 +70,18 @@ func main() {
 	if *monzoAccessTokens == "" {
 		go func() {
 			for _ = range tickerOAuthInterval.C {
-				log.Println("Refreshing OAuth tokens")
+				log.Println("main: Refreshing OAuth tokens")
 				err := monzoOAuthClient.RefreshAToken()
 				if err != nil {
-					log.Printf("Encountered error refreshing tokens")
+					log.Printf("main: Encountered error refreshing tokens")
 				}
+				log.Println("main: Refreshed OAuth tokens")
 			}
 		}()
 	} else {
-		log.Println("Skipping starting OAuth token refresher")
+		log.Println("main: Skipping starting OAuth token refresher")
 	}
 
+	log.Printf("main: Serving prometheus on :%d", *metricsPort)
 	http.ListenAndServe(fmt.Sprintf(":%d", *metricsPort), promhttp.Handler())
 }

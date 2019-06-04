@@ -12,12 +12,12 @@ type MonzoCollector struct {
 }
 
 func (m *MonzoCollector) Stop() {
-	log.Println("Stopping MonzoCollector")
+	log.Println("Stop: Stopping MonzoCollector")
 	m.stop <- true
 }
 
 func (m *MonzoCollector) Serve() {
-	log.Println("Starting MonzoCollector")
+	log.Println("Serve: Starting MonzoCollector")
 	for {
 		select {
 		case <-m.stop:
