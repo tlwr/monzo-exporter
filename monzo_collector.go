@@ -53,6 +53,8 @@ func CollectAllMetrics(accessTokens []string) error {
 			return err
 		}
 
+		SetUserLatestCollect(identity.UserID)
+
 		err = CollectAccountMetrics(token, identity)
 		if err != nil {
 			return err

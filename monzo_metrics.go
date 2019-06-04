@@ -39,6 +39,14 @@ var (
 		[]string{"user_id", "pot_id", "pot_name"},
 	)
 
+	userLatestCollectMetric = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "monzo_user_latest_collect",
+			Help: "Shows the unix timestamp expiry for most recent data collection",
+		},
+		[]string{"user_id"},
+	)
+
 	accessTokenExpiryMetric = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "monzo_access_token_expiry",
@@ -53,6 +61,7 @@ func RegisterCustomMetrics() {
 	prometheus.MustRegister(totalBalanceMetric)
 	prometheus.MustRegister(spendTodayMetric)
 	prometheus.MustRegister(potBalanceMetric)
+	prometheus.MustRegister(userLatestCollectMetric)
 	prometheus.MustRegister(accessTokenExpiryMetric)
 }
 
@@ -108,6 +117,14 @@ func SetPotBalance(
 			"pot_name": potName,
 		},
 	).Set(float64(balance))
+}
+
+func SetUserLatestCollect(userID MonzoUserID) {
+	userLatestCollectMetric.With(
+		prometheus.Labels{
+			"user_id": string(userID),
+		},
+	).Set(float64(time.Now().Unix()))
 }
 
 func SetAccessTokenExpiry(
