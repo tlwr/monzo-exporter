@@ -59,7 +59,7 @@ type MonzoAuthResponse struct {
 	AccessToken   MonzoAccessToken  `json:"access_token"`
 	RefreshToken  MonzoRefreshToken `json:"refresh_token"`
 	UserID        MonzoUserID       `json:"user_id"`
-	ExpirySeconds int64             `json:"expires_in"`
+	ExpirySeconds float64           `json:"expires_in"`
 }
 
 type MonzoAccessAndRefreshTokens struct {
