@@ -154,6 +154,8 @@ func (m *MonzoOAuthClient) handleJourneyCallback(w http.ResponseWriter, r *http.
 	)
 	log.Println("handleJourneyCallback: Appended to TokensBox")
 
+	SetAccessTokenExpiry(authResponse.UserID, expiryTime)
+
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("201 - Tokens received and accepted"))
 }
