@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -55,6 +56,14 @@ var (
 		},
 		[]string{"user_id"},
 	)
+
+	monzoAPIResponseCodeMetric = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "monzo_api_response_code",
+			Help: "Shows the response codes per endpoint from the Monzo API",
+		},
+		[]string{"response_code", "endpoint"},
+	)
 )
 
 func RegisterCustomMetrics() {
@@ -64,6 +73,7 @@ func RegisterCustomMetrics() {
 	prometheus.MustRegister(potBalanceMetric)
 	prometheus.MustRegister(userLatestCollectMetric)
 	prometheus.MustRegister(accessTokenExpiryMetric)
+	prometheus.MustRegister(monzoAPIResponseCodeMetric)
 }
 
 func SetCurrentBalance(
@@ -169,4 +179,21 @@ func SetAccessTokenExpiry(
 			"user_id": string(userID),
 		},
 	).Set(float64(expiryTime.Unix()))
+}
+
+func IncMonzoAPIResponseCode(
+	endpoint string,
+	responseCode int,
+) {
+	log.Printf(
+		"Incrementing monzo_api_response_code %d for endpoint %s",
+		responseCode, endpoint,
+	)
+
+	monzoAPIResponseCodeMetric.With(
+		prometheus.Labels{
+			"endpoint":      endpoint,
+			"response_code": fmt.Sprintf("%d", responseCode),
+		},
+	).Inc()
 }

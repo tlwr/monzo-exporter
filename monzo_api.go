@@ -28,6 +28,8 @@ func GetUserIdentity(accessToken string) (MonzoCallerIdentity, error) {
 	log.Print("GetUserIdentity: Requesting: /ping/whoami")
 	resp, err := req.Send()
 
+	IncMonzoAPIResponseCode("/ping/whoami", resp.StatusCode)
+
 	if err != nil {
 		log.Printf("GetUserIdentity: Encountered error: /ping/whoami => %s", err)
 		return callerID, err
@@ -50,6 +52,8 @@ func ListAccounts(accessToken string) ([]MonzoAccount, error) {
 	req.Path("/accounts")
 	log.Print("ListAccounts: Requesting: /accounts")
 	resp, err := req.Send()
+
+	IncMonzoAPIResponseCode("/accounts", resp.StatusCode)
 
 	if err != nil {
 		log.Printf("ListAccounts: Encountered error: /accounts => %s", err)
@@ -78,6 +82,8 @@ func ListPots(accessToken string) ([]MonzoPot, error) {
 	log.Print("ListPots: Requesting: /pots")
 	resp, err := req.Send()
 
+	IncMonzoAPIResponseCode("/pots", resp.StatusCode)
+
 	if err != nil {
 		log.Printf("ListPots: Encountered error: /pots => %s", err)
 		return pots, err
@@ -104,6 +110,8 @@ func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, err
 	log.Printf("GetBalance: Requesting: /balance?account_id=%s", accountID)
 	resp, err := req.Send()
 
+	IncMonzoAPIResponseCode("/balance", resp.StatusCode)
+
 	if err != nil {
 		log.Printf("GetBalance: Encountered error: /pots => %s", err)
 		return balance, err
@@ -128,6 +136,10 @@ func RefreshToken(clientId string, clientSecret string, accessToken string, refr
 	req.AddQuery("client_secret", clientSecret)
 	log.Printf("RefreshToken: Requesting: /oauth2/token")
 	resp, err := req.Send()
+
+	IncMonzoAPIResponseCode(
+		"/oauth2/token?grant_type=refresh_token", resp.StatusCode,
+	)
 
 	if err != nil {
 		log.Printf(
