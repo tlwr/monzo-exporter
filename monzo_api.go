@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/h2non/gentleman"
+	"github.com/h2non/gentleman/plugins/multipart"
 )
 
 const (
@@ -126,14 +128,24 @@ func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, err
 	return balance, nil
 }
 
-func RefreshToken(clientId string, clientSecret string, accessToken string, refreshToken string) (MonzoAccessAndRefreshTokens, error) {
+func RefreshToken(
+	clientId string, clientSecret string,
+	accessToken string, refreshToken string,
+) (MonzoAccessAndRefreshTokens, error) {
+
 	var returnTokens MonzoAccessAndRefreshTokens
 
+	fields := multipart.DataFields{
+		"grant_type":    {"refresh_token"},
+		"client_id":     {clientId},
+		"client_secret": {clientSecret},
+		"refresh_token": {refreshToken},
+	}
+
 	req := MonzoClient(accessToken)
-	req.Path("/oauth2/token?grant_type=refresh_token")
-	req.AddQuery("grant_type", "refresh_token")
-	req.AddQuery("client_id", clientId)
-	req.AddQuery("client_secret", clientSecret)
+	req.Path("/oauth2/token")
+	req.Method("POST")
+	req.Use(multipart.Fields(fields))
 	log.Printf("RefreshToken: Requesting: /oauth2/token")
 	resp, err := req.Send()
 
@@ -147,6 +159,15 @@ func RefreshToken(clientId string, clientSecret string, accessToken string, refr
 			err,
 		)
 		return returnTokens, err
+	}
+
+	if !resp.Ok {
+		message := fmt.Sprintf(
+			"RefreshToken: Not successful, status code => %d ; body => %s",
+			resp.StatusCode, resp.String(),
+		)
+		log.Println(message)
+		return returnTokens, fmt.Errorf(message)
 	}
 
 	var authResponse MonzoAuthResponse
