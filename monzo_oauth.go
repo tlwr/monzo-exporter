@@ -201,7 +201,7 @@ func (m *MonzoOAuthClient) UsingAccessTokens(fun func([]string) error) error {
 		)
 	}
 
-	log.Println(
+	log.Printf(
 		"UsingAccessTokens: Calling func with %d access tokens",
 		len(accessTokens),
 	)
