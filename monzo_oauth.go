@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/h2non/gentleman"
 	"github.com/h2non/gentleman/plugins/multipart"
@@ -51,7 +52,7 @@ func (m *MonzoOAuthClient) handleJourneyStart(w http.ResponseWriter, r *http.Req
 	}, "&")
 	monzoAuthURI := fmt.Sprintf("https://auth.monzo.com?%s", query)
 
-	log.Printf("Redirecting user to %s\n", monzoAuthURI)
+	log.Printf("handleJourneyStart: Redirecting user to %s\n", monzoAuthURI)
 	http.Redirect(w, r, monzoAuthURI, 302)
 }
 
@@ -105,7 +106,7 @@ func (m *MonzoOAuthClient) handleJourneyCallback(w http.ResponseWriter, r *http.
 	client.URL(authURL)
 	client.Use(multipart.Fields(fields))
 
-	log.Printf("Making POST request to %s\n", authURL)
+	log.Printf("handleJourneyCallback: Making POST request to %s\n", authURL)
 	response, err := client.Request().Method("POST").Send()
 
 	if err != nil {
@@ -116,7 +117,10 @@ func (m *MonzoOAuthClient) handleJourneyCallback(w http.ResponseWriter, r *http.
 		return
 	}
 
-	log.Printf("Response to POST request to %s was %d\n", authURL, response.StatusCode)
+	log.Printf(
+		"handleJourneyCallback: Response to POST request to %s was %d\n",
+		authURL, response.StatusCode,
+	)
 
 	var authResponse MonzoAuthResponse
 	err = json.Unmarshal(response.Bytes(), &authResponse)
@@ -127,20 +131,30 @@ func (m *MonzoOAuthClient) handleJourneyCallback(w http.ResponseWriter, r *http.
 		return
 	}
 
-	log.Println("Locking TokensBox")
+	expiryTime := time.Now().Add(
+		time.Duration(authResponse.ExpirySeconds-300) * time.Second,
+	)
+
+	log.Println("handleJourneyCallback: Locking TokensBox")
 	m.TokensBox.Lock.Lock()
+
+	defer func() {
+		log.Println("handleJourneyCallback: Unlocking TokensBox")
+		m.TokensBox.Lock.Unlock()
+	}()
 
 	m.TokensBox.Tokens = append(
 		m.TokensBox.Tokens,
 		MonzoAccessAndRefreshTokens{
 			AccessToken:  authResponse.AccessToken,
 			RefreshToken: authResponse.RefreshToken,
+			UserID:       authResponse.UserID,
+			ExpiryTime:   expiryTime,
 		},
 	)
-	log.Println("Appended to TokensBox")
+	log.Println("handleJourneyCallback: Appended to TokensBox")
 
-	log.Println("Unlocking TokensBox")
-	m.TokensBox.Lock.Unlock()
+	SetAccessTokenExpiry(authResponse.UserID, expiryTime)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("201 - Tokens received and accepted"))
@@ -155,7 +169,7 @@ func (m *MonzoOAuthClient) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("GET %s\n", path)
+	log.Printf("ServeHTTP: GET %s\n", path)
 
 	if path == START_PATH {
 		m.handleJourneyStart(w, r)
@@ -168,36 +182,48 @@ func (m *MonzoOAuthClient) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNotFound)
 	w.Write([]byte("404 - Not found"))
-	log.Printf("Served 404 for %s\n", path)
+	log.Printf("ServeHTTP: Served 404 for %s\n", path)
 }
 
-func (m *MonzoOAuthClient) GetAccessTokens() ([]string, error) {
-	log.Println("Getting access tokens")
-	tokens := make([]string, 0)
+func (m *MonzoOAuthClient) UsingAccessTokens(fun func([]string) error) error {
+	accessTokens := make([]string, 0)
 
-	log.Println("Locking TokensBox")
+	log.Println("UsingAccessTokens: Locking TokensBox")
 	m.TokensBox.Lock.Lock()
+	log.Println("UsingAccessTokens: Locked TokensBox")
 
-	log.Printf("There are %d tokens in the box\n", len(m.TokensBox.Tokens))
+	defer func() {
+		log.Println("UsingAccessTokens: Unlocking TokensBox")
+		m.TokensBox.Lock.Unlock()
+	}()
 
-	for _, accessAndRefreshToken := range m.TokensBox.Tokens {
-		tokens = append(tokens, string(accessAndRefreshToken.AccessToken))
+	for _, accessAndRefreshTokens := range m.TokensBox.Tokens {
+		accessTokens = append(
+			accessTokens, string(accessAndRefreshTokens.AccessToken),
+		)
 	}
 
-	log.Println("Unlocking TokensBox")
-	m.TokensBox.Lock.Unlock()
+	log.Printf(
+		"UsingAccessTokens: Calling func with %d access tokens",
+		len(accessTokens),
+	)
+	err := fun(accessTokens)
+	log.Println("UsingAccessTokens: Finished call to func")
 
-	log.Println("Finished getting access tokens")
-	return tokens, nil
+	if err != nil {
+		log.Printf("UsingAccessTokens: Encountered err calling func => %s", err)
+		return err
+	}
+
+	log.Println("UsingAccessTokens: Done")
+	return nil
 }
 
-func (m *MonzoOAuthClient) listen(port int) func() ([]string, error) {
-	tokensBox := ConcurrentMonzoTokensBox{
+func (m *MonzoOAuthClient) Start(port int) func(func([]string) error) error {
+	m.TokensBox = ConcurrentMonzoTokensBox{
 		Lock:   sync.Mutex{},
 		Tokens: make([]MonzoAccessAndRefreshTokens, 0),
 	}
-
-	m.TokensBox = tokensBox
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -205,5 +231,52 @@ func (m *MonzoOAuthClient) listen(port int) func() ([]string, error) {
 	}
 
 	go server.ListenAndServe()
-	return m.GetAccessTokens
+	return m.UsingAccessTokens
+}
+
+func (m *MonzoOAuthClient) RefreshAToken() error {
+	log.Println("RefreshAToken: Locking TokensBox")
+	m.TokensBox.Lock.Lock()
+	log.Println("RefreshAToken: Locked TokensBox")
+
+	tokens := m.TokensBox.Tokens
+
+	defer func() {
+		log.Println("RefreshAToken: Unlocking TokensBox")
+		m.TokensBox.Lock.Unlock()
+	}()
+
+	if len(tokens) == 0 {
+		log.Println("RefreshAToken: No tokens to refresh. Done")
+		return nil
+	}
+
+	headToken := m.TokensBox.Tokens[0]
+	tailTokens := m.TokensBox.Tokens[1:]
+
+	doWeNeedToRefresh := true // FIXME
+	if doWeNeedToRefresh {
+		log.Printf("RefreshAToken: Refreshing token for user %s", headToken.UserID)
+
+		refreshedToken, err := RefreshToken(
+			m.MonzoOAuthClientID, m.MonzoOAuthClientSecret,
+			string(headToken.AccessToken), string(headToken.RefreshToken),
+		)
+
+		if err != nil {
+			return fmt.Errorf(
+				"RefreshAToken: Encountered error refreshing token for user %s => %s",
+				headToken.UserID, err,
+			)
+		}
+
+		headToken = refreshedToken
+		log.Printf("RefreshAToken: Refreshed token for user %s", headToken.UserID)
+
+		SetAccessTokenExpiry(headToken.UserID, headToken.ExpiryTime)
+	}
+
+	m.TokensBox.Tokens = append(tailTokens, headToken)
+	log.Println("RefreshAToken: Rotated tokens")
+	return nil
 }

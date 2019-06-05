@@ -9,7 +9,7 @@ ENV GO111MODULE=on
 
 RUN go mod download
 
-COPY $PWD/* ./
+COPY $PWD/*.go ./
 
 RUN go build -o /bin/monzo_exporter
 

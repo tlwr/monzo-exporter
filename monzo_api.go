@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/h2non/gentleman"
+	"github.com/h2non/gentleman/plugins/multipart"
 )
 
 const (
@@ -24,17 +27,20 @@ func GetUserIdentity(accessToken string) (MonzoCallerIdentity, error) {
 
 	req := MonzoClient(accessToken)
 	req.Path("/ping/whoami")
-	log.Print("Requesting: /ping/whoami")
+	log.Print("GetUserIdentity: Requesting: /ping/whoami")
 	resp, err := req.Send()
 
+	IncMonzoAPIResponseCode("/ping/whoami", resp.StatusCode)
+
 	if err != nil {
-		log.Printf("Encountered error: /ping/whoami => %s", err)
+		log.Printf("GetUserIdentity: Encountered error: /ping/whoami => %s", err)
 		return callerID, err
 	}
-	log.Print("Finished: /ping/whoami")
+	log.Println("GetUserIdentity: Finished: /ping/whoami")
 
 	err = json.Unmarshal(resp.Bytes(), &callerID)
 	if err != nil {
+		log.Printf("GetUserIdentity: Encountered error unmarshalling => %s", err)
 		return callerID, err
 	}
 
@@ -46,23 +52,27 @@ func ListAccounts(accessToken string) ([]MonzoAccount, error) {
 
 	req := MonzoClient(accessToken)
 	req.Path("/accounts")
-	log.Print("Requesting: /accounts")
+	log.Print("ListAccounts: Requesting: /accounts")
 	resp, err := req.Send()
 
+	IncMonzoAPIResponseCode("/accounts", resp.StatusCode)
+
 	if err != nil {
-		log.Printf("Encountered error: /accounts => %s", err)
+		log.Printf("ListAccounts: Encountered error: /accounts => %s", err)
 		return accounts, err
 	}
-	log.Printf("Finished: /accounts")
+	log.Printf("ListAccounts: Finished: /accounts")
 
 	var accountsResp MonzoAPIListAccountsResponse
 
 	err = json.Unmarshal(resp.Bytes(), &accountsResp)
 	if err != nil {
+		log.Printf("ListAccounts: Encountered error unmarshalling => %s", err)
 		return accounts, err
 	}
 
 	accounts = accountsResp.Accounts
+	log.Printf("ListAccounts: Done")
 	return accounts, nil
 }
 
@@ -71,14 +81,16 @@ func ListPots(accessToken string) ([]MonzoPot, error) {
 
 	req := MonzoClient(accessToken)
 	req.Path("/pots")
-	log.Print("Requesting: /pots")
+	log.Print("ListPots: Requesting: /pots")
 	resp, err := req.Send()
 
+	IncMonzoAPIResponseCode("/pots", resp.StatusCode)
+
 	if err != nil {
-		log.Printf("Encountered error: /pots => %s", err)
+		log.Printf("ListPots: Encountered error: /pots => %s", err)
 		return pots, err
 	}
-	log.Print("Finished: /pots")
+	log.Print("ListPots Finished: /pots")
 
 	var potsResp MonzoAPIListPotsResponse
 
@@ -97,14 +109,16 @@ func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, err
 	req := MonzoClient(accessToken)
 	req.Path("/balance")
 	req.AddQuery("account_id", string(accountID))
-	log.Printf("Requesting: /balance?account_id=%s", accountID)
+	log.Printf("GetBalance: Requesting: /balance?account_id=%s", accountID)
 	resp, err := req.Send()
 
+	IncMonzoAPIResponseCode("/balance", resp.StatusCode)
+
 	if err != nil {
-		log.Printf("Encountered error: /pots => %s", err)
+		log.Printf("GetBalance: Encountered error: /pots => %s", err)
 		return balance, err
 	}
-	log.Printf("Finished: /balance?account_id=%s", accountID)
+	log.Printf("GetBalance: Finished: /balance?account_id=%s", accountID)
 
 	err = json.Unmarshal(resp.Bytes(), &balance)
 	if err != nil {
@@ -112,4 +126,72 @@ func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, err
 	}
 
 	return balance, nil
+}
+
+func RefreshToken(
+	clientId string, clientSecret string,
+	accessToken string, refreshToken string,
+) (MonzoAccessAndRefreshTokens, error) {
+
+	var returnTokens MonzoAccessAndRefreshTokens
+
+	fields := multipart.DataFields{
+		"grant_type":    {"refresh_token"},
+		"client_id":     {clientId},
+		"client_secret": {clientSecret},
+		"refresh_token": {refreshToken},
+	}
+
+	req := MonzoClient(accessToken)
+	req.Path("/oauth2/token")
+	req.Method("POST")
+	req.Use(multipart.Fields(fields))
+	log.Printf("RefreshToken: Requesting: /oauth2/token")
+	resp, err := req.Send()
+
+	IncMonzoAPIResponseCode(
+		"/oauth2/token?grant_type=refresh_token", resp.StatusCode,
+	)
+
+	if err != nil {
+		log.Printf(
+			"RefreshToken: Encountered error: /oauth2/token?grant_type=refresh_token => %s",
+			err,
+		)
+		return returnTokens, err
+	}
+
+	if !resp.Ok {
+		message := fmt.Sprintf(
+			"RefreshToken: Not successful, status code => %d ; body => %s",
+			resp.StatusCode, resp.String(),
+		)
+		log.Println(message)
+		return returnTokens, fmt.Errorf(message)
+	}
+
+	var authResponse MonzoAuthResponse
+	err = json.Unmarshal(resp.Bytes(), &authResponse)
+
+	if err != nil {
+		log.Printf(
+			"RefreshToken: Encountered error unmarshalling refresh token response => %s",
+			err,
+		)
+		return returnTokens, err
+	}
+
+	expiryTime := time.Now().Add(
+		time.Duration(authResponse.ExpirySeconds-300) * time.Second,
+	)
+
+	log.Printf(
+		"RefreshToken: Refreshed access token for %s", authResponse.UserID,
+	)
+	return MonzoAccessAndRefreshTokens{
+		AccessToken:  authResponse.AccessToken,
+		RefreshToken: authResponse.RefreshToken,
+		UserID:       authResponse.UserID,
+		ExpiryTime:   expiryTime,
+	}, nil
 }
