@@ -1,0 +1,19 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+
+metadata:
+  labels:
+    app: monzo-exporter
+  name: monzo-exporter
+  namespace: monitoring
+
+spec:
+  selector:
+    matchLabels:
+      app: monzo-exporter
+
+  endpoints:
+  - interval: 15s
+    port: exporter
+...

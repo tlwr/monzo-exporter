@@ -66,3 +66,15 @@ the same browser.
 
 Presently this exporter has no persistent state, so restarting the process will
 require all users to reauthenticate.
+
+
+### Deployment using Kubernetes
+
+You will need the `prometheus-operator` CRDs on your cluster.  Kubeyaml
+examples in the `examples` directory:
+
+- There should be Deployment ensuring there is always one Pod running
+- There should be a Service exposing the exporter
+- There should be a ServiceMonitor so Prometheus scrapes the exporter
+- (Optional) There should be a Service exposing the OAuth server
+- (Optional) There should be an Ingress exposing the OAuth server (no example)

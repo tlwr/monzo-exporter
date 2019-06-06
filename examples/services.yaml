@@ -1,0 +1,45 @@
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: monzo-exporter
+  namespace: monitoring
+  labels:
+    app: monzo-exporter
+
+spec:
+  ports:
+  - name: exporter
+    port: 9036
+    protocol: TCP
+    targetPort: 9036
+
+  selector:
+    app: monzo
+
+  type: ClusterIP
+...
+
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: monzo-tobys-cloud
+  namespace: monitoring
+  labels:
+    app: monzo-tobys-cloud
+
+spec:
+  ports:
+  - name: web
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+
+  selector:
+    app: monzo
+
+  type: ClusterIP
+...

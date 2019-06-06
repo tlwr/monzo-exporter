@@ -1,0 +1,41 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+
+metadata:
+  name: monzo
+  namespace: monitoring
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monzo
+
+  template:
+    metadata:
+      labels:
+        app: monzo
+
+    spec:
+      containers:
+      - name: monzo
+        image: tlwr/monzo_exporter:latest
+        imagePullPolicy: Always
+
+        env:
+        - name: MONZO_OAUTH_CLIENT_ID
+          value: {{ MONZO_OAUTH_CLIENT_ID }}
+        - name: MONZO_OAUTH_CLIENT_SECRET
+          value: {{ MONZO_OAUTH_CLIENT_SECRET }}
+        - name: MONZO_OAUTH_EXTERNAL_URL
+          value: {{ MONZO_OAUTH_EXTERNAL_URL }}
+        - name: MONZO_OAUTH_REFRESH_INTERVAL
+          value: "600"
+
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        - containerPort: 9036
+          protocol: TCP
+...
