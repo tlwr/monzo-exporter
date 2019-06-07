@@ -7,7 +7,6 @@ import (
 
 type MonzoAccessToken string
 type MonzoAccountID string
-type MonzoCategory string
 type MonzoClientID string
 type MonzoCurrency string
 type MonzoMerchantID string
