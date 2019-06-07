@@ -100,7 +100,7 @@ func (m *MonzoOAuthClient) handleJourneyCallback(w http.ResponseWriter, r *http.
 		"code":          {requestCode},
 	}
 
-	authURL := "https://api.monzo.com/oauth2/token"
+	authURL := fmt.Sprintf("%s/oauth2/token", MonzoAPIEndpoint)
 
 	client := gentleman.New()
 	client.URL(authURL)

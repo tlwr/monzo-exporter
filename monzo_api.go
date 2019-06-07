@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	MONZO_API_ENDPOINT = "https://api.monzo.com"
+	MonzoAPIEndpoint = "https://api.monzo.com"
 )
 
 func MonzoClient(accessToken string) *gentleman.Request {
 	client := gentleman.New()
-	client.URL("https://api.monzo.com")
+	client.URL(MonzoAPIEndpoint)
 	request := client.Request()
 	request.SetHeader("Authorization", "Bearer "+accessToken)
 	return request
