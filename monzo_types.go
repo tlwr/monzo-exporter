@@ -61,6 +61,25 @@ type MonzoAuthResponse struct {
 	ExpirySeconds float64           `json:"expires_in"`
 }
 
+type MonzoTransaction struct {
+	Amount      int            `json:"amount"`
+	Currency    MonzoCurrency  `json:"currency"`
+	AccountID   MonzoAccountID `json:"account_id"`
+	UserID      MonzoUserID    `json:"user_id"`
+	Category    string         `json:"category"`
+	Description string         `json:"description"`
+}
+
+type MonzoTransactionsResponse struct {
+	Transactions []MonzoTransaction `json:"transactions"`
+}
+
+type MonzoTransactionsSummary struct {
+	Description string
+	Category    string
+	Amount      int
+}
+
 type MonzoAccessAndRefreshTokens struct {
 	AccessToken  MonzoAccessToken
 	RefreshToken MonzoRefreshToken

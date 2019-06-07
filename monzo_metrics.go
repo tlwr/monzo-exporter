@@ -33,6 +33,17 @@ var (
 		[]string{"user_id", "account_id"},
 	)
 
+	transactionsAmountToday = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "monzo_transactions_amount_today",
+			Help: "Shows the amount transacted today for a transaction description",
+		},
+		[]string{
+			"user_id", "account_id",
+			"description", "category",
+		},
+	)
+
 	potBalanceMetric = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "monzo_pot_balance",
@@ -70,6 +81,7 @@ func RegisterCustomMetrics() {
 	prometheus.MustRegister(currentBalanceMetric)
 	prometheus.MustRegister(totalBalanceMetric)
 	prometheus.MustRegister(spendTodayMetric)
+	prometheus.MustRegister(transactionsAmountToday)
 	prometheus.MustRegister(potBalanceMetric)
 	prometheus.MustRegister(userLatestCollectMetric)
 	prometheus.MustRegister(accessTokenExpiryMetric)
@@ -196,4 +208,25 @@ func IncMonzoAPIResponseCode(
 			"response_code": fmt.Sprintf("%d", responseCode),
 		},
 	).Inc()
+}
+
+func SetTransactionsAmountToday(
+	userID MonzoUserID, accountID MonzoAccountID,
+	transactionsSummary MonzoTransactionsSummary,
+) {
+	log.Printf(
+		"Setting monzo_transactions_amount_today for User %s for Account %s for Description %s for Category %s to %d",
+		userID, accountID,
+		transactionsSummary.Description, transactionsSummary.Category,
+		transactionsSummary.Amount,
+	)
+
+	transactionsAmountToday.With(
+		prometheus.Labels{
+			"user_id":     string(userID),
+			"account_id":  string(accountID),
+			"description": transactionsSummary.Description,
+			"category":    transactionsSummary.Category,
+		},
+	).Set(float64(transactionsSummary.Amount))
 }

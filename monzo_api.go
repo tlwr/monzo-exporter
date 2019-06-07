@@ -115,7 +115,10 @@ func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, err
 	IncMonzoAPIResponseCode("/balance", resp.StatusCode)
 
 	if err != nil {
-		log.Printf("GetBalance: Encountered error: /pots => %s", err)
+		log.Printf(
+			"GetBalance: Encountered error: /balance?account_id=%s => %s",
+			accountID, err,
+		)
 		return balance, err
 	}
 	log.Printf("GetBalance: Finished: /balance?account_id=%s", accountID)
@@ -126,6 +129,44 @@ func GetBalance(accessToken string, accountID MonzoAccountID) (MonzoBalance, err
 	}
 
 	return balance, nil
+}
+
+func GetTransactionsSinceDay(accessToken string, accountID MonzoAccountID, day time.Time) ([]MonzoTransaction, error) {
+	var transactions []MonzoTransaction
+	var transactionsResponse MonzoTransactionsResponse
+	beginningOfDay := day.Truncate(24 * time.Hour)
+
+	req := MonzoClient(accessToken)
+	req.Path("/transactions")
+	req.AddQuery("account_id", string(accountID))
+	req.AddQuery("since", beginningOfDay.Format(time.RFC3339))
+	req.AddQuery("expand", "merchant")
+	log.Printf(
+		"GetBalance: Requesting: /transactions?account_id=%s&since=%s",
+		accountID, beginningOfDay,
+	)
+	resp, err := req.Send()
+
+	IncMonzoAPIResponseCode("/transactions", resp.StatusCode)
+
+	if err != nil {
+		log.Printf(
+			"GetTransactionsSinceDay: Encountered error: /transactions?account_id=%s&since=%s => %s",
+			accountID, beginningOfDay, err,
+		)
+		return transactions, err
+	}
+	log.Printf(
+		"GetTransactionsSinceDay: Finished: /transactions?account_id=%s&since=%s",
+		accountID, beginningOfDay,
+	)
+
+	err = json.Unmarshal(resp.Bytes(), &transactionsResponse)
+	if err != nil {
+		return transactions, err
+	}
+
+	return transactionsResponse.Transactions, nil
 }
 
 func RefreshToken(

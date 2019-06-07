@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 )
@@ -103,6 +104,48 @@ func CollectAccountMetrics(accessToken string, identity MonzoCallerIdentity) err
 		SetCurrentBalance(identity.UserID, account.ID, balance.Balance)
 		SetTotalBalance(identity.UserID, account.ID, balance.TotalBalance)
 		SetSpendToday(identity.UserID, account.ID, balance.SpendToday)
+
+		log.Printf(
+			"CollectAccountMetrics: Getting transactions for user %s", identity.UserID,
+		)
+
+		transactions, err := GetTransactionsSinceDay(
+			accessToken, account.ID, time.Now(),
+		)
+
+		if err != nil {
+			log.Printf(
+				"CollectAccountMetrics: Encountered error getting transactions for user %s => %s",
+				identity.UserID, err,
+			)
+			return err
+		}
+
+		summaries := make(map[string]MonzoTransactionsSummary, 0)
+		for _, transaction := range transactions {
+			summaryKey := fmt.Sprintf(
+				"%s/%s",
+				transaction.Category, transaction.Description,
+			)
+
+			if _, ok := summaries[summaryKey]; !ok {
+				summaries[summaryKey] = MonzoTransactionsSummary{
+					Amount:      transaction.Amount,
+					Category:    transaction.Category,
+					Description: transaction.Description,
+				}
+			} else {
+				summaries[summaryKey] = MonzoTransactionsSummary{
+					Amount:      summaries[summaryKey].Amount + transaction.Amount,
+					Category:    transaction.Category,
+					Description: transaction.Description,
+				}
+			}
+		}
+
+		for _, summary := range summaries {
+			SetTransactionsAmountToday(identity.UserID, account.ID, summary)
+		}
 	}
 
 	log.Printf("CollectAccountMetrics: Done user %s", identity.UserID)
