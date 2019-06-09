@@ -230,3 +230,9 @@ func SetTransactionsAmountToday(
 		},
 	).Set(float64(transactionsSummary.Amount))
 }
+
+func ResetTransactionsAmountToday() {
+	log.Println("Resetting monzo_transactions_amount_today")
+	transactionsAmountToday.Reset()
+	log.Println("Reset monzo_transactions_amount_today")
+}

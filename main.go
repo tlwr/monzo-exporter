@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/robfig/cron"
 	"github.com/thejerf/suture"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -98,6 +99,14 @@ func main() {
 			}
 		}()
 	}
+
+	log.Println("Registering cron handlers")
+	scheduler := cron.New()
+	scheduler.AddFunc(
+		"@midnight",
+		ResetTransactionsAmountToday,
+	)
+	log.Println("Registered cron handlers")
 
 	log.Printf("main: Serving prometheus on :%d", *metricsPort)
 	http.ListenAndServe(fmt.Sprintf(":%d", *metricsPort), promhttp.Handler())
