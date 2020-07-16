@@ -76,11 +76,12 @@ func ListAccounts(accessToken string) ([]MonzoAccount, error) {
 	return accounts, nil
 }
 
-func ListPots(accessToken string) ([]MonzoPot, error) {
+func ListPots(accessToken string, accountID MonzoAccountID) ([]MonzoPot, error) {
 	var pots []MonzoPot
 
 	req := MonzoClient(accessToken)
 	req.Path("/pots")
+	req.AddQuery("current_account_id", string(accountID))
 	log.Print("ListPots: Requesting: /pots")
 	resp, err := req.Send()
 
