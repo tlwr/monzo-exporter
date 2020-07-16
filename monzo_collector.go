@@ -154,21 +154,34 @@ func CollectAccountMetrics(accessToken string, identity MonzoCallerIdentity) err
 
 func CollectPotMetrics(accessToken string, identity MonzoCallerIdentity) error {
 	log.Printf("CollectPotMetrics: Starting user %s", identity.UserID)
-	pots, err := ListPots(accessToken)
+
+	accounts, err := ListAccounts(accessToken)
 
 	if err != nil {
 		log.Printf(
-			"CollectPotMetrics: Encountered error listing pots for user %s => %s",
+			"CollectAccountMetrics: Encountered error listing accounts for user %s => %s",
 			identity.UserID, err,
 		)
 		return err
 	}
 
-	for _, pot := range pots {
-		SetPotBalance(identity.UserID, pot.ID, pot.Name, pot.Balance)
-	}
+	for _, account := range accounts {
+		pots, err := ListPots(accessToken, account.ID)
 
-	log.Printf("CollectPotMetrics: Done user %s", identity.UserID)
+		if err != nil {
+			log.Printf(
+				"CollectPotMetrics: Encountered error listing pots for user %s => %s",
+				identity.UserID, err,
+			)
+			return err
+		}
+
+		for _, pot := range pots {
+			SetPotBalance(identity.UserID, pot.ID, pot.Name, pot.Balance)
+		}
+
+		log.Printf("CollectPotMetrics: Done user %s", identity.UserID)
+	}
 
 	return nil
 }
