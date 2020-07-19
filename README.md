@@ -14,9 +14,9 @@ Very alpha
 ### CLI usage:
 
 ```
-$ monzo_exporter --help
+$ monzo-exporter --help
 
-usage: monzo_exporter [<flags>]
+usage: monzo-exporter [<flags>]
 
 Flags:
   --help                         Show context-sensitive help (also try --help-long and --help-man).
@@ -35,7 +35,7 @@ Flags:
 Using one or many access keys from Monzo API Playground you can run:
 
 ```
-monzo_exporter --monzo-access-tokens=token1,token2,token3
+monzo-exporter --monzo-access-tokens=token1,token2,token3
 ```
 
 These tokens are only valid for 6 hours.
@@ -48,7 +48,7 @@ Monzo.
 You can run:
 
 ```
-monzo_exporter                                                       \
+monzo-exporter                                                       \
   --monzo-oauth-client-id     my-client-id-from-monzo-playground     \
   --monzo-oauth-client-secret my-client-secret-from-monzo-playground \
   --monzo-oauth-external-url  https://external-url-for-server

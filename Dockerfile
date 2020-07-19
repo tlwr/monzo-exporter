@@ -1,7 +1,7 @@
 ARG golang_version
 FROM golang:$golang_version
 
-WORKDIR /go/src/github.com/tlwr/monzo_exporter
+WORKDIR /go/src/github.com/tlwr/monzo-exporter
 
 COPY $PWD/go.mod go.mod
 COPY $PWD/go.sum go.sum
@@ -12,6 +12,6 @@ RUN go mod download
 
 COPY $PWD/*.go ./
 
-RUN go build -o /bin/monzo_exporter
+RUN go build -o /bin/monzo-exporter
 
-ENTRYPOINT ["/bin/monzo_exporter"]
+ENTRYPOINT ["/bin/monzo-exporter"]

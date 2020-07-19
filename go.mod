@@ -1,4 +1,4 @@
-module github.com/tlwr/monzo_exporter
+module github.com/tlwr/monzo-exporter
 
 go 1.14
 
