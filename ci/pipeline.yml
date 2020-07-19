@@ -25,6 +25,15 @@ resources:
     source:
       uri: https://github.com/tlwr/monzo-exporter.git
       branch: main
+
+  - name: monzo-exporter-img
+    type: registry-image
+    icon: docker
+    source:
+      repository: ((registry-secrets.registry))/monzo-exporter
+      username: ((registry-secrets.username))
+      password: ((registry-secrets.password))
+
 jobs:
   - name: set-pipeline
     serial: true
@@ -72,3 +81,7 @@ jobs:
 
           run:
             path: build
+
+      - put: monzo-exporter-img
+        params:
+          image: image/image.tar
