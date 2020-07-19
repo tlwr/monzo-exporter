@@ -159,7 +159,7 @@ func CollectPotMetrics(accessToken string, identity MonzoCallerIdentity) error {
 
 	if err != nil {
 		log.Printf(
-			"CollectAccountMetrics: Encountered error listing accounts for user %s => %s",
+			"CollectPotMetrics: Encountered error listing accounts for user %s => %s",
 			identity.UserID, err,
 		)
 		return err
