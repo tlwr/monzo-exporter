@@ -1,0 +1,74 @@
+---
+
+resource_types:
+  - name: registry-tag
+    type: registry-image
+    source:
+      repository: tlwr/registry-tag-resource
+      tag: 1593696431
+
+resources:
+  - name: golang-img-tag
+    type: registry-tag
+    icon: tag
+    check_every: 15m
+    source:
+      uri: https://hub.docker.com/v2/repositories/library/golang
+      pages: 3
+      regexp: '^[0-9]+[.][0-9]+[.][0-9]+-alpine'
+      semver:
+        matcher: '>= 1.14'
+
+  - name: monzo-exporter-src
+    type: git
+    icon: git
+    source:
+      uri: https://github.com/tlwr/monzo-exporter.git
+      branch: main
+jobs:
+  - name: set-pipeline
+    serial: true
+    plan:
+      - get: monzo-exporter-src
+        trigger: true
+
+      - set_pipeline: monzo-exporter
+        file: monzo-exporter-src/ci/pipeline.yml
+
+  - name: build
+    serial: true
+    public: true
+    plan:
+      - get: monzo-exporter-src
+        passed: [set-pipeline]
+        trigger: true
+
+      - get: golang-img-tag
+        trigger: true
+
+      - load_var: golang-version
+        file: golang-img-tag/tag
+
+      - task: build-img
+        privileged: true
+        config:
+          platform: linux
+
+          image_resource:
+            type: registry-image
+            source:
+              repository: vito/oci-build-task
+              tag: 0.3.0
+
+          inputs:
+            - name: monzo-exporter-src
+              path: .
+
+          outputs:
+            - name: image
+
+          params:
+            BUILD_ARG_golang_version: ((.:golang-version))
+
+          run:
+            path: build

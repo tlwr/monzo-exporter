@@ -1,4 +1,5 @@
-FROM golang
+ARG golang_version
+FROM golang:$golang_version
 
 WORKDIR /go/src/github.com/tlwr/monzo_exporter
 
