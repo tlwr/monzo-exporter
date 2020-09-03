@@ -85,3 +85,6 @@ jobs:
       - put: monzo-exporter-img
         params:
           image: image/image.tar
+        get_params:
+          skip_download: true
+
