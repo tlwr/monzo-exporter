@@ -30,9 +30,9 @@ resources:
     type: registry-image
     icon: docker
     source:
-      repository: ((registry-secrets.registry))/monzo-exporter
-      username: ((registry-secrets.username))
-      password: ((registry-secrets.password))
+      repository: docker.pkg.github.com/tlwr/monzo-exporter/monzo-exporter
+      username: ((docker-secrets.username))
+      password: ((docker-secrets.password))
 
 jobs:
   - name: set-pipeline
