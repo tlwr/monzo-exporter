@@ -8,6 +8,7 @@ require (
 	github.com/prometheus/client_golang v0.9.4
 	github.com/robfig/cron v1.2.0
 	github.com/thejerf/suture v3.0.3+incompatible
+	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	gopkg.in/h2non/gentleman.v2 v2.0.3 // indirect
+	gopkg.in/h2non/gentleman.v2 v2.0.5 // indirect
 )
